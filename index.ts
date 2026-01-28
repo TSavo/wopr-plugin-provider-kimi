@@ -1,5 +1,5 @@
 /**
- * WOPR Plugin: Moonshot AI Kimi Provider (OAuth)
+ * WOPR Plugin: Moonshot AI Kimi Provider (OAuth) - DEBUG VERSION
  */
 
 import type { ModelProvider, ModelClient, ModelQueryOptions } from "wopr/dist/types/provider.js";
@@ -53,6 +53,7 @@ class KimiClient implements ModelClient {
   }
 
   async *query(opts: ModelQueryOptions): AsyncGenerator<any> {
+    console.log(`[kimi-client] Query starting: "${opts.prompt.substring(0, 50)}"`);
     const { createSession } = await loadSDK();
     
     const session = createSession({
@@ -72,12 +73,17 @@ class KimiClient implements ModelClient {
         promptText = `${opts.systemPrompt}\n\n${promptText}`;
       }
 
+      console.log("[kimi-client] Sending prompt...");
       const turn = session.prompt(promptText);
 
+      let eventCount = 0;
       for await (const event of turn) {
-        // Handle SDK event types
+        eventCount++;
+        console.log(`[kimi-client] Event ${eventCount}: ${event.type}`);
+        
         if (event.type === "ContentPart") {
           if (event.payload?.type === "text") {
+            console.log(`[kimi-client]   Yielding text: "${event.payload.text?.substring(0, 30)}"`);
             yield { type: "text", content: event.payload.text || "" };
           }
         } else if (event.type === "tool_use" || event.type === "ToolCall") {
@@ -85,11 +91,15 @@ class KimiClient implements ModelClient {
         }
       }
 
+      console.log(`[kimi-client] Got ${eventCount} events, waiting for result...`);
       await turn.result;
+      console.log("[kimi-client] Yielding complete");
       yield { type: "complete", content: "" };
 
       await session.close();
+      console.log("[kimi-client] Session closed");
     } catch (error) {
+      console.error("[kimi-client] Error:", error);
       await session.close();
       throw error;
     }
@@ -113,8 +123,8 @@ class KimiClient implements ModelClient {
 
 const plugin: WOPRPlugin = {
   name: "provider-kimi",
-  version: "1.2.0",
-  description: "Moonshot AI Kimi Code CLI provider for WOPR (OAuth)",
+  version: "1.3.0",
+  description: "Moonshot AI Kimi Code CLI provider for WOPR (OAuth) - DEBUG",
 
   async init(ctx: WOPRPluginContext) {
     ctx.log.info("Registering Kimi provider (OAuth)...");
