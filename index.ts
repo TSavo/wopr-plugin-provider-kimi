@@ -1,30 +1,29 @@
 /**
  * WOPR Plugin: Moonshot AI Kimi Provider
  * 
- * Provides Moonshot AI Kimi Code CLI access via the Kimi Agent SDK.
- * Install: wopr plugin install wopr-plugin-provider-kimi
+ * Provides Moonshot AI Kimi Code CLI access via OAuth + Kimi Agent SDK.
  */
 
 import type { ModelProvider, ModelClient, ModelQueryOptions } from "wopr/dist/types/provider.js";
 import type { WOPRPlugin, WOPRPluginContext } from "wopr/dist/types.js";
+import { execSync } from "child_process";
 
-let KimiSDK: any;
-
-/**
- * Lazy load Kimi Agent SDK
- */
-async function loadKimiSDK() {
-  if (!KimiSDK) {
-    try {
-      const kimi = await import("@moonshot-ai/kimi-agent-sdk");
-      KimiSDK = kimi;
-    } catch (error) {
-      throw new Error(
-        "Kimi Agent SDK not installed. Run: npm install @moonshot-ai/kimi-agent-sdk"
-      );
-    }
+// Get kimi CLI path
+function getKimiPath(): string {
+  try {
+    return execSync("which kimi").toString().trim();
+  } catch {
+    return "kimi";
   }
-  return KimiSDK;
+}
+
+// Lazy load SDK
+async function loadSDK() {
+  try {
+    return await import("@moonshot-ai/kimi-agent-sdk");
+  } catch (error) {
+    throw new Error("Kimi Agent SDK not installed. Run: npm install @moonshot-ai/kimi-agent-sdk");
+  }
 }
 
 /**
@@ -33,19 +32,18 @@ async function loadKimiSDK() {
 const kimiProvider: ModelProvider = {
   id: "kimi",
   name: "Kimi",
-  description: "Moonshot AI Kimi Code CLI agent SDK for coding tasks (image URLs passed in prompt)",
+  description: "Moonshot AI Kimi Code CLI with OAuth authentication",
   defaultModel: "kimi-k2",
-  supportedModels: ["kimi-k2", "kimi-for-coding"],
+  supportedModels: ["kimi-k2"],
 
   async validateCredentials(credential: string): Promise<boolean> {
-    if (!credential.startsWith("sk-")) {
-      return false;
-    }
-
+    // OAuth - no credential to validate, CLI handles auth
     try {
-      const kimi = await loadKimiSDK();
-      const agent = new kimi.KimiAgent({ apiKey: credential });
-      const session = await agent.createSession();
+      const { createSession } = await loadSDK();
+      const session = createSession({
+        workDir: "/tmp",
+        executable: getKimiPath()
+      });
       await session.close();
       return true;
     } catch (error) {
@@ -53,15 +51,12 @@ const kimiProvider: ModelProvider = {
     }
   },
 
-  async createClient(
-    credential: string,
-    options?: Record<string, unknown>
-  ): Promise<ModelClient> {
-    return new KimiClient(credential, options);
+  async createClient(credential: string, options?: Record<string, unknown>): Promise<ModelClient> {
+    return new KimiClient(options);
   },
 
   getCredentialType(): "api-key" | "oauth" | "custom" {
-    return "api-key";
+    return "oauth";
   },
 };
 
@@ -69,93 +64,82 @@ const kimiProvider: ModelProvider = {
  * Kimi client implementation
  */
 class KimiClient implements ModelClient {
-  private agent: any;
+  private sdk: any;
+  private executable: string;
 
-  constructor(
-    private credential: string,
-    private options?: Record<string, unknown>
-  ) {
-    process.env.MOONSHOT_API_KEY = credential;
+  constructor(private options?: Record<string, unknown>) {
+    this.executable = getKimiPath();
   }
 
-  private async getAgent() {
-    if (!this.agent) {
-      const kimi = await loadKimiSDK();
-      this.agent = new kimi.KimiAgent({
-        apiKey: this.credential,
-        ...this.options,
-      });
+  private async initSDK() {
+    if (!this.sdk) {
+      this.sdk = await loadSDK();
     }
-    return this.agent;
+    return this.sdk;
   }
 
   async *query(opts: ModelQueryOptions): AsyncGenerator<any> {
-    const agent = await this.getAgent();
+    const { createSession } = await this.initSDK();
+    
+    const session = createSession({
+      workDir: "/tmp",
+      executable: this.executable,
+      ...this.options
+    });
 
     try {
-      const session = await agent.createSession();
-
-      // Prepare prompt - include image URLs in text
-      let prompt = opts.prompt;
+      // Prepare prompt with images
+      let promptText = opts.prompt;
       if (opts.images && opts.images.length > 0) {
         const imageList = opts.images.map((url, i) => `[Image ${i + 1}]: ${url}`).join('\n');
-        prompt = `[User has shared ${opts.images.length} image(s)]\n${imageList}\n\n${opts.prompt}`;
+        promptText = `[User has shared ${opts.images.length} image(s)]\n${imageList}\n\n${opts.prompt}`;
       }
 
       if (opts.systemPrompt) {
-        prompt = `${opts.systemPrompt}\n\n${prompt}`;
+        promptText = `${opts.systemPrompt}\n\n${promptText}`;
       }
 
-      const stream = await session.sendMessage(prompt);
+      const turn = session.prompt(promptText);
 
-      for await (const msg of stream) {
-        if (msg.type === "text" || msg.type === "assistant") {
+      for await (const event of turn) {
+        if (event.type === "text") {
           yield {
-            type: "assistant",
-            message: {
-              content: [{ type: "text", text: msg.content || msg.text || "" }],
-            },
+            type: "text",
+            content: event.text || "",
           };
-        } else if (msg.type === "tool_use" || msg.type === "tool_call") {
+        } else if (event.type === "tool_call") {
           yield {
-            type: "assistant",
-            message: {
-              content: [{ type: "tool_use", name: msg.name || msg.tool_name }],
-            },
+            type: "tool_use",
+            toolName: event.tool_call?.name || "tool",
           };
-        } else if (msg.type === "complete" || msg.type === "done") {
-          yield {
-            type: "result",
-            subtype: "success",
-            total_cost_usd: msg.cost || 0,
-          };
-        } else if (msg.type === "error") {
-          yield {
-            type: "result",
-            subtype: "error",
-            error: msg.error || msg.message,
-          };
-        } else {
-          yield msg;
         }
       }
 
+      const result = await turn.result;
+      yield {
+        type: "complete",
+        content: "",
+        total_cost_usd: result.token_usage?.total_tokens || 0,
+      };
+
       await session.close();
     } catch (error) {
-      throw new Error(
-        `Kimi query failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+      await session.close();
+      throw error;
     }
   }
 
   async listModels(): Promise<string[]> {
-    return kimiProvider.supportedModels;
+    return ["kimi-k2"];
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      const agent = await this.getAgent();
-      const session = await agent.createSession();
+      const { createSession } = await this.initSDK();
+      const session = createSession({
+        workDir: "/tmp",
+        executable: this.executable
+      });
       await session.close();
       return true;
     } catch {
@@ -169,41 +153,13 @@ class KimiClient implements ModelClient {
  */
 const plugin: WOPRPlugin = {
   name: "provider-kimi",
-  version: "1.0.0",
-  description: "Moonshot AI Kimi Code CLI provider for WOPR",
+  version: "1.1.0",
+  description: "Moonshot AI Kimi Code CLI provider for WOPR (OAuth)",
 
   async init(ctx: WOPRPluginContext) {
-    ctx.log.info("Registering Kimi provider...");
+    ctx.log.info("Registering Kimi provider (OAuth)...");
     ctx.registerProvider(kimiProvider);
     ctx.log.info("Kimi provider registered");
-
-    // Register config schema for UI
-    ctx.registerConfigSchema("provider-kimi", {
-      title: "Moonshot AI Kimi",
-      description: "Configure Moonshot AI Kimi API credentials",
-      fields: [
-        {
-          name: "apiKey",
-          type: "password",
-          label: "API Key",
-          placeholder: "sk-...",
-          required: true,
-          description: "Your Moonshot API key (starts with sk-)",
-        },
-        {
-          name: "model",
-          type: "select",
-          label: "Default Model",
-          options: [
-            { value: "kimi-k2", label: "Kimi K2" },
-            { value: "kimi-for-coding", label: "Kimi for Coding" },
-          ],
-          default: "kimi-k2",
-          description: "Default model to use for new sessions",
-        },
-      ],
-    });
-    ctx.log.info("Registered Kimi config schema");
   },
 
   async shutdown() {

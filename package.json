@@ -1,8 +1,8 @@
 {
   "name": "wopr-plugin-provider-kimi",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Moonshot AI Kimi Code CLI provider plugin for WOPR",
-  "main": "index.js",
+  "main": "index.ts",
   "type": "module",
   "scripts": {
     "build": "tsc",
