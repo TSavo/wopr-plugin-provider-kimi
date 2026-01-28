@@ -1,14 +1,11 @@
 /**
- * WOPR Plugin: Moonshot AI Kimi Provider
- * 
- * Provides Moonshot AI Kimi Code CLI access via OAuth + Kimi Agent SDK.
+ * WOPR Plugin: Moonshot AI Kimi Provider (OAuth)
  */
 
 import type { ModelProvider, ModelClient, ModelQueryOptions } from "wopr/dist/types/provider.js";
 import type { WOPRPlugin, WOPRPluginContext } from "wopr/dist/types.js";
 import { execSync } from "child_process";
 
-// Get kimi CLI path
 function getKimiPath(): string {
   try {
     return execSync("which kimi").toString().trim();
@@ -17,18 +14,10 @@ function getKimiPath(): string {
   }
 }
 
-// Lazy load SDK
 async function loadSDK() {
-  try {
-    return await import("@moonshot-ai/kimi-agent-sdk");
-  } catch (error) {
-    throw new Error("Kimi Agent SDK not installed. Run: npm install @moonshot-ai/kimi-agent-sdk");
-  }
+  return await import("@moonshot-ai/kimi-agent-sdk");
 }
 
-/**
- * Kimi provider implementation
- */
 const kimiProvider: ModelProvider = {
   id: "kimi",
   name: "Kimi",
@@ -36,14 +25,10 @@ const kimiProvider: ModelProvider = {
   defaultModel: "kimi-k2",
   supportedModels: ["kimi-k2"],
 
-  async validateCredentials(credential: string): Promise<boolean> {
-    // OAuth - no credential to validate, CLI handles auth
+  async validateCredentials(): Promise<boolean> {
     try {
       const { createSession } = await loadSDK();
-      const session = createSession({
-        workDir: "/tmp",
-        executable: getKimiPath()
-      });
+      const session = createSession({ workDir: "/tmp", executable: getKimiPath() });
       await session.close();
       return true;
     } catch (error) {
@@ -51,7 +36,7 @@ const kimiProvider: ModelProvider = {
     }
   },
 
-  async createClient(credential: string, options?: Record<string, unknown>): Promise<ModelClient> {
+  async createClient(_credential: string, options?: Record<string, unknown>): Promise<ModelClient> {
     return new KimiClient(options);
   },
 
@@ -60,26 +45,15 @@ const kimiProvider: ModelProvider = {
   },
 };
 
-/**
- * Kimi client implementation
- */
 class KimiClient implements ModelClient {
-  private sdk: any;
   private executable: string;
 
   constructor(private options?: Record<string, unknown>) {
     this.executable = getKimiPath();
   }
 
-  private async initSDK() {
-    if (!this.sdk) {
-      this.sdk = await loadSDK();
-    }
-    return this.sdk;
-  }
-
   async *query(opts: ModelQueryOptions): AsyncGenerator<any> {
-    const { createSession } = await this.initSDK();
+    const { createSession } = await loadSDK();
     
     const session = createSession({
       workDir: "/tmp",
@@ -88,7 +62,6 @@ class KimiClient implements ModelClient {
     });
 
     try {
-      // Prepare prompt with images
       let promptText = opts.prompt;
       if (opts.images && opts.images.length > 0) {
         const imageList = opts.images.map((url, i) => `[Image ${i + 1}]: ${url}`).join('\n');
@@ -102,25 +75,18 @@ class KimiClient implements ModelClient {
       const turn = session.prompt(promptText);
 
       for await (const event of turn) {
-        if (event.type === "text") {
-          yield {
-            type: "text",
-            content: event.text || "",
-          };
-        } else if (event.type === "tool_call") {
-          yield {
-            type: "tool_use",
-            toolName: event.tool_call?.name || "tool",
-          };
+        // Handle SDK event types
+        if (event.type === "ContentPart") {
+          if (event.payload?.type === "text") {
+            yield { type: "text", content: event.payload.text || "" };
+          }
+        } else if (event.type === "tool_use" || event.type === "ToolCall") {
+          yield { type: "tool_use", toolName: event.payload?.name || "tool" };
         }
       }
 
-      const result = await turn.result;
-      yield {
-        type: "complete",
-        content: "",
-        total_cost_usd: result.token_usage?.total_tokens || 0,
-      };
+      await turn.result;
+      yield { type: "complete", content: "" };
 
       await session.close();
     } catch (error) {
@@ -135,11 +101,8 @@ class KimiClient implements ModelClient {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const { createSession } = await this.initSDK();
-      const session = createSession({
-        workDir: "/tmp",
-        executable: this.executable
-      });
+      const { createSession } = await loadSDK();
+      const session = createSession({ workDir: "/tmp", executable: this.executable });
       await session.close();
       return true;
     } catch {
@@ -148,12 +111,9 @@ class KimiClient implements ModelClient {
   }
 }
 
-/**
- * Plugin export
- */
 const plugin: WOPRPlugin = {
   name: "provider-kimi",
-  version: "1.1.0",
+  version: "1.2.0",
   description: "Moonshot AI Kimi Code CLI provider for WOPR (OAuth)",
 
   async init(ctx: WOPRPluginContext) {
