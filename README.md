@@ -1,6 +1,12 @@
 # wopr-plugin-provider-kimi
 
-Moonshot AI Kimi Code CLI provider plugin for WOPR.
+[![npm version](https://img.shields.io/npm/v/wopr-plugin-provider-kimi.svg)](https://www.npmjs.com/package/wopr-plugin-provider-kimi)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![WOPR](https://img.shields.io/badge/WOPR-Plugin-blue)](https://github.com/TSavo/wopr)
+
+Moonshot AI Kimi Code CLI provider plugin for [WOPR](https://github.com/TSavo/wopr).
+
+> Part of the [WOPR](https://github.com/TSavo/wopr) ecosystem - Self-sovereign AI session management over P2P.
 
 ## Installation
 
