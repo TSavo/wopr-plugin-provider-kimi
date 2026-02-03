@@ -5,6 +5,7 @@
 [![WOPR](https://img.shields.io/badge/WOPR-Plugin-blue)](https://github.com/TSavo/wopr)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org/)
+[![Version](https://img.shields.io/badge/Version-1.6.0-brightgreen.svg)]()
 
 > Moonshot AI Kimi Code CLI provider plugin for [WOPR](https://github.com/TSavo/wopr) - Self-sovereign AI session management over P2P.
 
@@ -15,13 +16,14 @@
 ## ✨ Features
 
 - 🚀 **Auto-Installation** - Automatically installs Python 3.12+, uv, and kimi-cli
-- 🔐 **OAuth Authentication** - Secure OAuth2 login flow
+- 🔐 **OAuth Authentication** - Secure OAuth2 login flow via Kimi Agent SDK
 - 📝 **Session Resumption** - Resume previous conversations seamlessly
 - ⚡ **Streaming Responses** - Real-time token streaming for interactive sessions
-- 🎯 **YOLO Mode** - Auto-approve filesystem operations for trusted workflows
-- 🔧 **Kimi K2 Models** - Full support for Kimi K2 series models
-- 🖼️ **Vision Support** - Process and analyze images alongside text
+- 🎯 **YOLO Mode** - Auto-approve filesystem operations (enabled by default)
+- 🔧 **Kimi K2 Model** - Full support for the Kimi K2 model
+- 🖼️ **Image Support** - Include images in prompts for analysis
 - 🔄 **Multi-Session** - Manage multiple concurrent Kimi sessions
+- 🔗 **A2A/MCP Support** - Agent-to-Agent communication via MCP server configuration
 
 ---
 
@@ -102,9 +104,11 @@ wopr session create my-kimi-session \
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `model` | string | `kimi-k2` | Model to use for the session |
-| `yoloMode` | boolean | `false` | Auto-approve filesystem operations |
 | `workDir` | string | `/tmp` | Working directory for the session |
 | `resume` | string | - | Session ID to resume from |
+| `a2aServers` | object | - | A2A/MCP server configuration for agent-to-agent communication |
+
+> **Note:** YOLO mode (auto-approve filesystem operations) is always enabled in the current version.
 
 ### JSON Configuration Example
 
@@ -112,10 +116,24 @@ wopr session create my-kimi-session \
 {
   "provider": "kimi",
   "model": "kimi-k2",
-  "yoloMode": true,
-  "workDir": "/home/user/projects"
+  "workDir": "/home/user/projects",
+  "a2aServers": {
+    "my-tools": {
+      "name": "my-tools",
+      "version": "1.0.0",
+      "tools": [
+        {
+          "name": "my_tool",
+          "description": "A custom tool",
+          "inputSchema": {}
+        }
+      ]
+    }
+  }
 }
 ```
+
+> **Note:** YOLO mode is always enabled in this provider version.
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for detailed configuration options.
 
@@ -153,14 +171,17 @@ wopr session create my-session --provider kimi
 wopr session resume my-session --session-id sess_abc123xyz
 ```
 
-Or via configuration:
+Or via the configuration `resume` option:
 
 ```json
 {
   "provider": "kimi",
+  "model": "kimi-k2",
   "resume": "sess_abc123xyz"
 }
 ```
+
+The plugin emits a `session_id` in the response when a session is created, which you can store for later resumption.
 
 ### Session Persistence
 
@@ -194,16 +215,18 @@ wopr prompt my-session "Describe this image" \
   --images ./screenshot.png,./diagram.jpg
 ```
 
+> **Note:** Images are included in the prompt text as references. The Kimi model will process and analyze the images alongside your text prompt.
+
 ### YOLO Mode (Auto-approve)
 
-For trusted, automated workflows:
+YOLO mode is **enabled by default** in this provider, allowing Kimi to make filesystem changes without requiring manual confirmation for each operation.
 
 ```bash
-wopr session create auto-task --provider kimi --yolo-mode
+wopr session create auto-task --provider kimi
 wopr prompt auto-task "Refactor the src/ directory to use TypeScript"
 ```
 
-⚠️ **Warning:** YOLO mode allows the AI to make filesystem changes without confirmation. Use only in version-controlled environments.
+> **Note:** YOLO mode is enabled by default for streamlined automation workflows. Use only in version-controlled environments where changes can be reviewed and reverted if needed.
 
 ---
 
@@ -252,7 +275,18 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive trouble
 
 ---
 
-## 🏗️ Development
+## 🏗️ Architecture
+
+This plugin uses the `@moonshot-ai/kimi-agent-sdk` to interact with the Kimi AI service. Key components:
+
+- **KimiClient**: Implements the WOPR `ModelClient` interface
+- **Session Management**: Creates and manages Kimi sessions with automatic session ID tracking
+- **A2A/MCP Integration**: Converts WOPR A2A server configs to Kimi MCP format
+- **Streaming**: Real-time token streaming via async generators
+
+---
+
+## 🔧 Development
 
 ```bash
 # Clone the repository
@@ -264,10 +298,12 @@ npm install
 
 # Build
 npm run build
-
-# Watch mode
-npm run build -- --watch
 ```
+
+### Key Dependencies
+
+- `@moonshot-ai/kimi-agent-sdk` - Official Kimi Agent SDK
+- `winston` - Logging
 
 ---
 

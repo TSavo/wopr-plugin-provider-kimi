@@ -12,25 +12,28 @@ Simple configuration for getting started with Kimi provider.
 
 **Features:**
 - Default model (kimi-k2)
-- Safe mode (YOLO disabled)
-- Temporary working directory
+- Temporary working directory (`/tmp/wopr-basic`)
+- Streaming enabled
+- Standard timeout (5 minutes)
 
-**Use when:** You're new to WOPR or want a safe, basic setup.
+**Use when:** You're new to WOPR or want a basic setup.
+
+> **Note:** YOLO mode is enabled by default in this provider.
 
 ---
 
 ### [yolo-mode.json](yolo-mode.json)
 
-Configuration for automated workflows with filesystem operation auto-approval.
+Configuration for automated workflows with extended timeout.
 
 **Features:**
-- YOLO mode enabled (auto-approve filesystem changes)
-- Extended timeout for long operations
+- Extended timeout (10 minutes) for long operations
 - System prompt optimized for automation
+- Custom warnings for safety awareness
 
 **Use when:** You want Kimi to work autonomously on trusted projects.
 
-⚠️ **Warning:** Only use in version-controlled environments!
+> **Note:** YOLO mode is enabled by default in this provider. Only use in version-controlled environments!
 
 ---
 
@@ -93,12 +96,48 @@ Basic structure:
   },
   "provider": {
     "kimi": {
-      "yoloMode": false,
       "workDir": "/path/to/project"
     }
   }
 }
 ```
+
+### With A2A/MCP Tools
+
+```json
+{
+  "session": {
+    "name": "my-session",
+    "provider": "kimi",
+    "model": "kimi-k2"
+  },
+  "provider": {
+    "kimi": {
+      "workDir": "/path/to/project"
+    }
+  },
+  "a2aServers": {
+    "my-tools": {
+      "name": "my-tools",
+      "version": "1.0.0",
+      "tools": [
+        {
+          "name": "custom_tool",
+          "description": "My custom tool",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "input": { "type": "string" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+> **Note:** YOLO mode is enabled by default. A2A servers are converted to Kimi's MCP format automatically.
 
 ---
 

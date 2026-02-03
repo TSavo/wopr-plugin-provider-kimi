@@ -1,27 +1,20 @@
 {
   "$schema": "https://wopr.dev/schema/config.json",
   "name": "Basic Kimi Configuration",
-  "description": "Simple configuration for getting started with Kimi provider",
+  "description": "Simple configuration for getting started with Kimi provider. Note: YOLO mode is enabled by default.",
   "version": "1.0.0",
-  
+
   "session": {
     "name": "basic-kimi",
     "provider": "kimi",
     "model": "kimi-k2",
     "workDir": "/tmp/wopr-basic"
   },
-  
-  "provider": {
-    "kimi": {
-      "yoloMode": false,
-      "streaming": true,
-      "timeout": 300000
-    }
-  },
-  
+
   "metadata": {
     "created": "2024-01-15",
     "author": "WOPR User",
-    "tags": ["beginner", "basic", "safe"]
+    "tags": ["beginner", "basic"],
+    "notes": "YOLO mode is enabled by default in the Kimi provider"
   }
 }

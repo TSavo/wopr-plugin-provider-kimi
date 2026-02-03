@@ -171,7 +171,7 @@ uv tool install kimi-cli --python python3.12
 wopr plugin list
 
 # Should show:
-# ✓ wopr-plugin-provider-kimi@1.5.0
+# ✓ wopr-plugin-provider-kimi@1.6.0
 ```
 
 ### Verify Provider Registration
@@ -181,7 +181,7 @@ wopr plugin list
 wopr providers list
 
 # Should show:
-# kimi - Moonshot AI Kimi Code CLI (OAuth)
+# kimi - Moonshot AI Kimi Code CLI with OAuth and A2A/MCP support
 ```
 
 ### Test Authentication

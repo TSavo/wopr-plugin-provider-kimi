@@ -1,68 +1,65 @@
 {
   "$schema": "https://wopr.dev/schema/config.json",
-  "name": "Multi-Model Orchestration",
-  "description": "Configuration for running multiple Kimi sessions with different purposes",
+  "name": "Multi-Session Orchestration",
+  "description": "Configuration for running multiple Kimi sessions with different purposes. Note: YOLO mode is enabled by default for all sessions.",
   "version": "1.0.0",
-  
+
   "sessions": {
     "kimi-coder": {
       "provider": "kimi",
       "model": "kimi-k2",
-      "workDir": "./src",
-      "yoloMode": true,
-      "systemPrompt": "You are an expert software engineer. Write clean, efficient, and well-documented code. Follow best practices and modern design patterns."
+      "workDir": "./src"
     },
-    
+
     "kimi-reviewer": {
       "provider": "kimi",
       "model": "kimi-k2",
-      "workDir": "./src",
-      "yoloMode": false,
-      "systemPrompt": "You are a senior code reviewer. Focus on security, performance, and maintainability. Provide constructive feedback with specific recommendations."
+      "workDir": "./src"
     },
-    
+
     "kimi-debugger": {
       "provider": "kimi",
       "model": "kimi-k2",
-      "workDir": ".",
-      "yoloMode": false,
-      "systemPrompt": "You are a debugging expert. Analyze error messages, logs, and code to identify root causes. Suggest minimal, targeted fixes."
+      "workDir": "."
     },
-    
+
     "kimi-docs": {
       "provider": "kimi",
       "model": "kimi-k2",
-      "workDir": "./docs",
-      "yoloMode": true,
-      "systemPrompt": "You are a technical writer. Create clear, comprehensive documentation. Use proper markdown formatting and include examples."
+      "workDir": "./docs"
     }
   },
-  
+
   "workflows": {
     "feature-development": {
       "description": "Complete feature development workflow",
       "steps": [
-        { "session": "kimi-coder", "prompt": "Implement the feature: {{feature_description}}" },
-        { "session": "kimi-reviewer", "prompt": "Review the changes made by kimi-coder" },
-        { "session": "kimi-debugger", "prompt": "Test the implementation and check for bugs", "condition": "if_tests_exist" },
-        { "session": "kimi-docs", "prompt": "Update documentation for the new feature" }
+        { "session": "kimi-coder", "prompt": "Implement the feature: {{feature_description}}", "system": "You are an expert software engineer. Write clean, efficient, and well-documented code." },
+        { "session": "kimi-reviewer", "prompt": "Review the changes made by kimi-coder", "system": "You are a senior code reviewer. Focus on security, performance, and maintainability." },
+        { "session": "kimi-debugger", "prompt": "Test the implementation and check for bugs", "system": "You are a debugging expert. Analyze error messages, logs, and code to identify root causes.", "condition": "if_tests_exist" },
+        { "session": "kimi-docs", "prompt": "Update documentation for the new feature", "system": "You are a technical writer. Create clear, comprehensive documentation with examples." }
       ]
     },
-    
+
     "bug-fix": {
       "description": "Systematic bug fixing workflow",
       "steps": [
-        { "session": "kimi-debugger", "prompt": "Analyze this bug: {{bug_description}}" },
-        { "session": "kimi-coder", "prompt": "Implement the fix suggested by kimi-debugger" },
-        { "session": "kimi-reviewer", "prompt": "Review the bug fix for correctness" }
+        { "session": "kimi-debugger", "prompt": "Analyze this bug: {{bug_description}}", "system": "You are a debugging expert. Suggest minimal, targeted fixes." },
+        { "session": "kimi-coder", "prompt": "Implement the fix suggested by kimi-debugger", "system": "You are an expert software engineer. Follow existing code patterns." },
+        { "session": "kimi-reviewer", "prompt": "Review the bug fix for correctness", "system": "You are a senior code reviewer. Verify the fix is correct and complete." }
       ]
     }
   },
-  
+
   "metadata": {
     "created": "2024-01-15",
     "author": "WOPR User",
     "tags": ["advanced", "multi-session", "workflow", "orchestration"],
-    "note": "Each session maintains its own context. Use session resumption to continue conversations."
+    "notes": [
+      "Each session maintains its own context",
+      "Use session resumption to continue conversations",
+      "YOLO mode is enabled by default for all sessions",
+      "System prompts are passed via --system flag when executing workflows"
+    ]
   }
 }

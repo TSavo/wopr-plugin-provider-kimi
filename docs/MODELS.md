@@ -47,11 +47,12 @@ The flagship Kimi model optimized for software development tasks.
 |------------|-----------|-------|
 | Code Generation | ✅ Yes | Multiple languages, frameworks |
 | Code Analysis | ✅ Yes | Review, refactor, debug |
-| File Operations | ✅ Yes | Read, write, modify files |
+| File Operations | ✅ Yes | Read, write, modify files (YOLO mode enabled by default) |
 | Terminal Commands | ✅ Yes | Execute shell commands |
-| Image Input | ✅ Yes | Vision capabilities |
-| Streaming | ✅ Yes | Real-time responses |
-| Session Resumption | ✅ Yes | Resume conversations |
+| Image Input | ✅ Yes | Images included as references in prompt |
+| Streaming | ✅ Yes | Real-time token streaming via async generators |
+| Session Resumption | ✅ Yes | Resume conversations with session ID |
+| A2A/MCP Tools | ✅ Yes | Agent-to-agent communication via MCP |
 
 #### Supported Languages
 
@@ -93,10 +94,11 @@ wopr session create code-gen --provider kimi --model kimi-k2
 {
   "provider": "kimi",
   "model": "kimi-k2",
-  "yoloMode": true,
   "workDir": "./src"
 }
 ```
+
+> **Note:** YOLO mode is enabled by default, allowing autonomous file operations.
 
 ---
 
@@ -119,10 +121,14 @@ wopr prompt my-session "Review the auth module for security issues" \
 ```json
 {
   "provider": "kimi",
-  "model": "kimi-k2",
-  "yoloMode": false,
-  "systemPrompt": "Review code for security, performance, and maintainability. Provide specific recommendations."
+  "model": "kimi-k2"
 }
+```
+
+Use with a system prompt:
+```bash
+wopr prompt my-session "Review this code" \
+  --system "Review code for security, performance, and maintainability. Provide specific recommendations."
 ```
 
 ---

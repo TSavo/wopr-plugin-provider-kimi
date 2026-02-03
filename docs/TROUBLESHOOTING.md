@@ -338,31 +338,31 @@ Error: Model 'kimi-k2' not available
 
 ---
 
-### "YOLO mode rejected"
+### File Operations Not Working
 
 **Symptoms:**
 ```
-Error: Operation rejected (YOLO mode not enabled)
+Error: File operation failed
 ```
 
 **Solutions:**
 
-1. **Enable YOLO mode:**
+1. **Check working directory permissions:**
    ```bash
-   wopr session create my-session --provider kimi --yolo-mode
+   ls -la /path/to/workDir
    ```
 
-2. **Or in config:**
-   ```json
-   {
-     "provider": "kimi",
-     "yoloMode": true
-   }
+2. **Ensure the directory exists:**
+   ```bash
+   mkdir -p /path/to/workDir
    ```
 
-3. **Approve manually:**
-   - When prompted, confirm the operation
-   - Use `wopr session approve my-session` if applicable
+3. **Check Kimi CLI is authenticated:**
+   ```bash
+   wopr providers check kimi
+   ```
+
+> **Note:** YOLO mode is enabled by default in this provider, so filesystem operations should be auto-approved.
 
 ---
 
@@ -505,7 +505,7 @@ wopr prompt my-session "test"
 # Get plugin version
 wopr plugin info wopr-plugin-provider-kimi
 
-# Expected: 1.5.0 or higher
+# Expected: 1.6.0 or higher
 ```
 
 ### Verify Installation

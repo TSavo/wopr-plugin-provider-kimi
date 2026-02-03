@@ -1,38 +1,30 @@
 {
   "$schema": "https://wopr.dev/schema/config.json",
-  "name": "YOLO Mode Configuration",
-  "description": "Configuration for automated workflows with filesystem operation auto-approval",
+  "name": "Automation Configuration",
+  "description": "Configuration for automated workflows with extended timeout. YOLO mode is enabled by default in the Kimi provider.",
   "version": "1.0.0",
-  
+
   "session": {
     "name": "kimi-automation",
     "provider": "kimi",
     "model": "kimi-k2",
     "workDir": "."
   },
-  
-  "provider": {
-    "kimi": {
-      "yoloMode": true,
-      "streaming": true,
-      "timeout": 600000,
-      "systemPrompt": "You are an autonomous coding assistant. Make changes efficiently and follow existing code patterns. Always add comments for non-obvious logic."
-    }
-  },
-  
+
   "warnings": [
-    "YOLO mode allows the AI to make filesystem changes without confirmation",
+    "YOLO mode is enabled by default - the AI can make filesystem changes without confirmation",
     "Only use this configuration in version-controlled environments",
     "Review changes regularly with git diff"
   ],
-  
+
   "metadata": {
     "created": "2024-01-15",
     "author": "WOPR User",
-    "tags": ["advanced", "automation", "yolo", "dangerous"],
+    "tags": ["advanced", "automation"],
     "requires": {
       "git": true,
       "versionControl": "highly recommended"
-    }
+    },
+    "notes": "Use --system flag to pass system prompts when sending queries"
   }
 }

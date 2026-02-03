@@ -58,11 +58,12 @@ wopr session create my-session \
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `provider` | string | - | Must be `"kimi"` |
-| `model` | string | `kimi-k2` | Model identifier |
-| `yoloMode` | boolean | `false` | Auto-approve all operations |
+| `model` | string | `kimi-k2` | Model identifier (currently only `kimi-k2` supported) |
 | `workDir` | string | `/tmp` | Base working directory |
-| `sessionId` | string | auto-generated | Session identifier for resumption |
-| `timeout` | number | 300000 | Request timeout in milliseconds (5 min) |
+| `resume` | string | - | Session ID to resume a previous conversation |
+| `a2aServers` | object | - | A2A/MCP server configuration for agent-to-agent communication |
+
+> **Note:** YOLO mode (auto-approve filesystem operations) is always enabled in the current provider version.
 
 ### Authentication Options
 
@@ -72,15 +73,17 @@ wopr session create my-session \
 | `auth.token` | string | OAuth token (auto-managed) |
 | `auth.refreshToken` | string | Refresh token (auto-managed) |
 
-### Advanced Options
+### Query Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `streaming` | boolean | `true` | Enable streaming responses |
-| `maxTokens` | number | model default | Maximum tokens per response |
-| `temperature` | number | model default | Sampling temperature (0-2) |
-| `topP` | number | model default | Nucleus sampling parameter |
-| `systemPrompt` | string | - | Default system prompt |
+These options can be passed when sending prompts:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `prompt` | string | The user prompt text |
+| `systemPrompt` | string | System prompt prepended to the user prompt |
+| `images` | string[] | Array of image URLs/paths to include in the prompt |
+
+> **Note:** The Kimi Agent SDK handles streaming automatically. Images are converted to text references in the prompt.
 
 ---
 
@@ -88,24 +91,50 @@ wopr session create my-session \
 
 ### Provider-Specific Settings
 
+The plugin looks for the Kimi CLI at `~/.local/share/uv/tools/kimi-cli/bin/kimi` by default, falling back to `kimi` in PATH.
+
 ```json
 {
   "provider": "kimi",
   "kimi": {
-    "executable": "/path/to/kimi",
-    "pythonVersion": "3.12",
-    "autoInstall": true,
-    "sessionTimeout": 2592000
+    "kimiPath": "/custom/path/to/kimi"
   }
 }
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `executable` | string | auto-detected | Path to kimi-cli binary |
-| `pythonVersion` | string | `3.12` | Required Python version |
-| `autoInstall` | boolean | `true` | Auto-install missing dependencies |
-| `sessionTimeout` | number | `2592000` | Session TTL in seconds (30 days) |
+| `kimiPath` | string | auto-detected | Path to kimi-cli binary |
+
+### A2A/MCP Server Configuration
+
+The plugin supports A2A (Agent-to-Agent) communication via MCP server configuration:
+
+```json
+{
+  "provider": "kimi",
+  "a2aServers": {
+    "my-tools": {
+      "name": "my-tools",
+      "version": "1.0.0",
+      "tools": [
+        {
+          "name": "search_docs",
+          "description": "Search documentation",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": { "type": "string" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+The plugin converts A2A server configs to Kimi's MCP format for seamless integration.
 
 ---
 
@@ -220,17 +249,30 @@ Location: `./.wopr.json` (in project root)
 }
 ```
 
-### Secure Session (No YOLO)
+### Session with A2A Tools
 
 ```json
 {
   "provider": "kimi",
   "model": "kimi-k2",
-  "yoloMode": false,
-  "workDir": "/tmp",
-  "systemPrompt": "Always ask for confirmation before making changes."
+  "workDir": "/home/user/project",
+  "a2aServers": {
+    "project-tools": {
+      "name": "project-tools",
+      "version": "1.0.0",
+      "tools": [
+        {
+          "name": "run_tests",
+          "description": "Run project test suite",
+          "inputSchema": {}
+        }
+      ]
+    }
+  }
 }
 ```
+
+> **Note:** YOLO mode is enabled by default in this provider.
 
 ### Resume Previous Session
 
@@ -238,8 +280,7 @@ Location: `./.wopr.json` (in project root)
 {
   "provider": "kimi",
   "model": "kimi-k2",
-  "sessionId": "sess_abc123xyz",
-  "resume": true
+  "resume": "sess_abc123xyz"
 }
 ```
 
